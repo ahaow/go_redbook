@@ -1,0 +1,23 @@
+app:
+  name: go_redbook
+  port: :3000
+
+database:
+  mode: mysql
+  dsn: root:root@tcp(127.0.0.1:3307)/go_redbook?charset=utf8mb4&parseTime=True&loc=Local
+  max_idle_conns: 10
+  max_open_cons: 114
+
+redis:
+  address: 127.0.0.1:6379
+  password: ""
+  db: 0
+
+jwt:
+  expires: 72 # 有效期 单位小时
+  issuer: wh
+  key: JWT_SECRET
+
+upload:
+  size: 20 # 上传大小限制 单位MB
+  dir: images
