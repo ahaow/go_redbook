@@ -6,6 +6,7 @@ import (
 	"go_redbook/internal/database"
 	"go_redbook/internal/logger"
 	"go_redbook/internal/router"
+	"go_redbook/internal/svc"
 )
 
 func main() {
@@ -31,8 +32,9 @@ func main() {
 		panic(err)
 	}
 
-	// 4. 初始化路由
-	r := router.InitRouter(global.DB, cfg.Jwt)
+	// 4. 初始化依赖容器和路由
+	svcCtx := svc.NewServiceContext(cfg, global.DB)
+	r := router.InitRouter(svcCtx)
 
 	port := cfg.App.Port
 	if port == "" {

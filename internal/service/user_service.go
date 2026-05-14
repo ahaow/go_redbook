@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"go_redbook/config"
 	"go_redbook/internal/model"
@@ -10,12 +10,6 @@ import (
 	"go_redbook/internal/repository"
 
 	"golang.org/x/crypto/bcrypt"
-)
-
-var (
-	ErrUserExists   = errors.New("用户已存在")
-	ErrUserNotFound = errors.New("用户不存在")
-	ErrInvalidLogin = errors.New("账号或密码错误")
 )
 
 // CreateUserInput 是 service 层的创建用户入参。
@@ -77,7 +71,7 @@ func (s *userService) create(ctx context.Context, input CreateUserInput) (*model
 		return nil, err
 	}
 	if existing != nil {
-		return nil, ErrUserExists
+		return nil, fmt.Errorf("user: %w", ErrConflict)
 	}
 
 	passwordHash, err := hashPassword(input.Password)
@@ -130,7 +124,7 @@ func (s *userService) GetByID(ctx context.Context, id uint) (*model.User, error)
 		return nil, err
 	}
 	if user == nil {
-		return nil, ErrUserNotFound
+		return nil, fmt.Errorf("user: %w", ErrNotFound)
 	}
 	return user, nil
 }

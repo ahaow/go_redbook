@@ -13,6 +13,8 @@ func AutoMigrate(db *gorm.DB) error {
 		&model.User{},
 		&model.Article{},
 		&model.ArticleImage{},
+		&model.ArticleLike{},
+		&model.ArticleFavorite{},
 		&model.Topic{},
 	)
 }

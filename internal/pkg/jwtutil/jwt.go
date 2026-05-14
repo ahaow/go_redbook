@@ -27,6 +27,7 @@ func GenerateToken(cfg config.JwtConfig, userID uint, username string) (string, 
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    cfg.Issuer,
+			Subject:   username,
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(expires),
 		},
@@ -53,5 +54,10 @@ func ParseToken(cfg config.JwtConfig, tokenString string) (*Claims, error) {
 	if !ok || !token.Valid {
 		return nil, fmt.Errorf("invalid token")
 	}
+
+	if claims.Issuer != cfg.Issuer {
+		return nil, fmt.Errorf("invalid issuer")
+	}
+
 	return claims, nil
 }

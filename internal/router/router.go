@@ -3,18 +3,16 @@ package router
 import (
 	"time"
 
-	"go_redbook/config"
 	"go_redbook/internal/handler"
-	"go_redbook/internal/repository"
-	"go_redbook/internal/service"
+	"go_redbook/internal/middleware"
+	"go_redbook/internal/svc"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 // InitRouter 初始化 Gin 引擎和全局中间件。
-func InitRouter(db *gorm.DB, jwtCfg config.JwtConfig) *gin.Engine {
+func InitRouter(svcCtx *svc.ServiceContext) *gin.Engine {
 	gin.SetMode("debug")
 
 	r := gin.Default()
@@ -30,17 +28,30 @@ func InitRouter(db *gorm.DB, jwtCfg config.JwtConfig) *gin.Engine {
 	}))
 
 	api := r.Group("/api/v1")
-	registerUserRoutes(api, db, jwtCfg)
+	registerUserRoutes(api, svcCtx)
+	registerPublicArticleRoutes(api, svcCtx)
+
+	auth := api.Group("")
+	auth.Use(middleware.JWTAuth(svcCtx.Config.Jwt))
+	registerPrivateArticleRoutes(auth, svcCtx)
 
 	return r
 }
 
 // registerUserRoutes 组装用户模块的依赖并注册路由。
 // 依赖方向：handler -> service -> repository -> db。
-func registerUserRoutes(api *gin.RouterGroup, db *gorm.DB, jwtCfg config.JwtConfig) {
-	userRepo := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepo, jwtCfg)
-	userHandler := handler.NewUserHandler(userService)
-
+func registerUserRoutes(api *gin.RouterGroup, svcCtx *svc.ServiceContext) {
+	userHandler := handler.NewUserHandler(svcCtx.UserService)
 	userHandler.RegisterRoutes(api)
+}
+
+func registerPublicArticleRoutes(api *gin.RouterGroup, svcCtx *svc.ServiceContext) {
+	articleHandler := handler.NewArticleHandler(svcCtx.ArticleService)
+	articleHandler.RegisterPublicRoutes(api)
+}
+
+func registerPrivateArticleRoutes(api *gin.RouterGroup, svcCtx *svc.ServiceContext) {
+	articleHandler := handler.NewArticleHandler(svcCtx.ArticleService)
+	articleHandler.RegisterCreateRoutes(api)
+	articleHandler.RegisterPrivateRoutes(api)
 }

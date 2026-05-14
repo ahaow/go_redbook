@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 
+	"go_redbook/internal/pkg/req"
+	"go_redbook/internal/pkg/response"
 	"go_redbook/internal/service"
 
 	"github.com/gin-gonic/gin"
@@ -32,93 +34,75 @@ func (h *UserHandler) RegisterRoutes(group *gin.RouterGroup) {
 	users.GET("/:id", h.GetByID)
 }
 
-// createUserRequest 是创建用户接口的 HTTP 请求体。
-// binding 标签由 Gin 自动校验，校验失败会在 handler 里返回 400。
-type createUserRequest struct {
-	Username string `json:"username" binding:"required,min=2,max=64"`
-	Email    string `json:"email" binding:"required,email,max=128"`
-	Password string `json:"password" binding:"required,min=6,max=64"`
-	Nickname string `json:"nickname" binding:"max=64"`
-}
-
-type loginRequest struct {
-	Account  string `json:"account" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
-
 // Register 处理 POST /api/v1/auth/register。
 func (h *UserHandler) Register(c *gin.Context) {
-	var req createUserRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, http.StatusBadRequest, 40001, "参数错误: "+err.Error())
+	var r req.CreateUserRequest
+	if err := c.ShouldBindJSON(&r); err != nil {
+		response.Error(c, http.StatusBadRequest, 40001, "参数错误: "+err.Error())
 		return
 	}
 
 	result, err := h.userService.Register(c.Request.Context(), service.CreateUserInput{
-		Username: req.Username,
-		Email:    req.Email,
-		Password: req.Password,
-		Nickname: req.Nickname,
+		Username: r.Username,
+		Email:    r.Email,
+		Password: r.Password,
+		Nickname: r.Nickname,
 	})
-	if errors.Is(err, service.ErrUserExists) {
-		fail(c, http.StatusConflict, 40002, err.Error())
+	if errors.Is(err, service.ErrConflict) {
+		response.Error(c, http.StatusConflict, 40002, "用户已存在")
 		return
 	}
 	if err != nil {
-		fail(c, http.StatusInternalServerError, 50001, "注册失败")
+		response.Error(c, http.StatusInternalServerError, 50001, "注册失败")
 		return
 	}
 
-	c.JSON(http.StatusCreated, response{
-		Code: 0,
-		Msg:  "ok",
-		Data: result,
-	})
+	response.Created(c, result)
 }
 
 // Login 处理 POST /api/v1/auth/login。
 func (h *UserHandler) Login(c *gin.Context) {
-	var req loginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		fail(c, http.StatusBadRequest, 40005, "参数错误: "+err.Error())
+	var r req.LoginRequest
+	if err := c.ShouldBindJSON(&r); err != nil {
+		response.Error(c, http.StatusBadRequest, 40005, "参数错误: "+err.Error())
 		return
 	}
 
 	result, err := h.userService.Login(c.Request.Context(), service.LoginInput{
-		Account:  req.Account,
-		Password: req.Password,
+		Account:  r.Account,
+		Password: r.Password,
 	})
 	if errors.Is(err, service.ErrInvalidLogin) {
-		fail(c, http.StatusUnauthorized, 40006, err.Error())
+		response.Error(c, http.StatusUnauthorized, 40006, err.Error())
 		return
 	}
 	if err != nil {
-		fail(c, http.StatusInternalServerError, 50004, "登录失败")
+		response.Error(c, http.StatusInternalServerError, 50004, "登录失败")
 		return
 	}
 
-	ok(c, result)
+	response.Success(c, result)
 }
 
 // GetByID 处理 GET /api/v1/users/:id。
 func (h *UserHandler) GetByID(c *gin.Context) {
 	id, err := parseUintParam(c, "id")
 	if err != nil {
-		fail(c, http.StatusBadRequest, 40003, "用户ID不正确")
+		response.Error(c, http.StatusBadRequest, 40003, "用户ID不正确")
 		return
 	}
 
 	user, err := h.userService.GetByID(c.Request.Context(), uint(id))
-	if errors.Is(err, service.ErrUserNotFound) {
-		fail(c, http.StatusNotFound, 40004, err.Error())
+	if errors.Is(err, service.ErrNotFound) {
+		response.Error(c, http.StatusNotFound, 40004, "用户不存在")
 		return
 	}
 	if err != nil {
-		fail(c, http.StatusInternalServerError, 50002, "查询用户失败")
+		response.Error(c, http.StatusInternalServerError, 50002, "查询用户失败")
 		return
 	}
 
-	ok(c, user)
+	response.Success(c, user)
 }
 
 // List 处理 GET /api/v1/users?page=1&page_size=10。
@@ -128,11 +112,11 @@ func (h *UserHandler) List(c *gin.Context) {
 
 	result, err := h.userService.List(c.Request.Context(), page, pageSize)
 	if err != nil {
-		fail(c, http.StatusInternalServerError, 50003, "查询用户列表失败")
+		response.Error(c, http.StatusInternalServerError, 50003, "查询用户列表失败")
 		return
 	}
 
-	ok(c, gin.H{
+	response.Success(c, gin.H{
 		"items":     result.Items,
 		"total":     result.Total,
 		"page":      page,
